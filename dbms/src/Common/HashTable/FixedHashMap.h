@@ -4,13 +4,14 @@
 #include <Common/HashTable/HashMap.h>
 
 
-template <typename Key, typename TMapped, typename TState = HashTableNoState>
+template <typename KeyType, typename MappedType, typename StateType = HashTableNoState>
 struct FixedHashMapCell
 {
-    using Mapped = TMapped;
-    using State = TState;
+    using Mapped = MappedType;
+    using State = StateType;
+    using Key = KeyType;
+    using value_type = PairNoInit<KeyType, MappedType>;
 
-    using value_type = PairNoInit<Key, Mapped>;
     Mapped mapped;
     bool full;
 
@@ -24,26 +25,36 @@ struct FixedHashMapCell
     void setZero() { full = false; }
     static constexpr bool need_zero_value_storage = false;
     void setMapped(const value_type & value) { mapped = value.getSecond(); }
+};
 
-    /// Similar to FixedHashSetCell except that we need to contain a pointer to the Mapped field.
-    ///  Note that we have to assemble a continuous layout for the value_type on each call of getValue().
-    struct CellExt
-    {
-        CellExt() {}
-        CellExt(Key && key_, const FixedHashMapCell * ptr_) : key(key_), ptr(const_cast<FixedHashMapCell *>(ptr_)) {}
-        void update(Key && key_, const FixedHashMapCell * ptr_)
-        {
-            key = key_;
-            ptr = const_cast<FixedHashMapCell *>(ptr_);
-        }
-        Key key;
-        FixedHashMapCell * ptr;
+/**
+  * A specialization of IteratorCellWrapper that supports separate methods
+  * for reading key and value.
+  */
+template <typename KeyType, typename MappedType, typename StateType>
+struct IteratorCellWrapper<FixedHashMapCell<KeyType, MappedType, StateType>>
+{
+    using Cell = FixedHashMapCell<KeyType, MappedType, StateType>;
+    using Key = typename Cell::Key;
+    using Mapped = typename Cell::Mapped;
+    using Value = typename Cell::value_type;
 
-        const Key & getFirst() const { return key; }
-        Mapped & getSecond() { return ptr->mapped; }
-        const Mapped & getSecond() const { return ptr->mapped; }
-        const value_type getValue() const { return {key, ptr->mapped}; }
-    };
+    // We use const cell pointer here for both constant and non-constant
+    // wrapper, to avoid adding another template parameter. Const-correctness
+    // is guaranteed by that the const iterator always returns a constant cell
+    // wrapper.
+    const Cell * cell;
+    Key key;
+
+    const Key & getFirst() const { return key; }
+
+    // FIXME it should be possible to remove this method altogether and use
+    // getFirst() and getSecond() instead.
+    // Also remove things like FixedHashMapCell::value_type = PairNoInit<KeyType, MappedType>;
+    const Value getValue() const { return {getFirst(), getSecond()}; }
+
+    const Mapped & getSecond() const { return cell->mapped; }
+    Mapped & getSecond() { return const_cast<Cell *>(cell)->mapped; }
 };
 
 

@@ -4,11 +4,11 @@
 #include <Common/HashTable/FixedHashTable.h>
 
 
-template <typename Key>
+template <typename KeyType>
 struct FixedClearableHashTableCell
 {
     using State = ClearableHashSetState;
-
+    using Key = KeyType;
     using value_type = Key;
     UInt32 version;
 

@@ -2,12 +2,13 @@
 
 #include <Common/HashTable/HashTable.h>
 
-template <typename Key, typename TState = HashTableNoState>
+template <typename KeyType, typename TState = HashTableNoState>
 struct FixedHashTableCell
 {
     using State = TState;
-
+    using Key = KeyType;
     using value_type = Key;
+
     bool full;
 
     FixedHashTableCell() {}
@@ -17,22 +18,36 @@ struct FixedHashTableCell
     void setZero() { full = false; }
     static constexpr bool need_zero_value_storage = false;
     void setMapped(const value_type & /*value*/) {}
-
-    /// This Cell is only stored inside an iterator. It's used to accomodate the fact
-    ///  that the iterator based API always provide a reference to a continuous memory
-    ///  containing the Key. As a result, we have to instantiate a real Key field.
-    /// All methods that return a mutable reference to the Key field are named with
-    ///  -Mutable suffix, indicating this is uncommon usage. As this is only for lookup
-    ///  tables, it's totally fine to discard the Key mutations.
-    struct CellExt
-    {
-        Key key;
-
-        const value_type & getValue() const { return key; }
-        void update(Key && key_, FixedHashTableCell *) { key = key_; }
-    };
 };
 
+/**
+  * The fixed hash table has to provide the same iterator interface as
+  * normal hash table. In particular, its iterators should dereference to an
+  * object that can return the key of the corresponding cell. The iterators of
+  * HashTable can just return its cells. Howewer, the cells of the fixed hash
+  * table do not contain the key and cannot provide this interface. This is why
+  * its iterator returns a wrapper object that is different from the cell itself.
+  * IteratorCellWrapper is a generic implementation of such a wrapper.
+  * More complex extensions of FixedHashTable such as FixedHashMap implement
+  * their own specialization of this wrapper to support different cell structure
+  * and additional required methods.
+  */
+template <typename Cell>
+struct IteratorCellWrapper
+{
+    using Key = typename Cell::Key;
+    using Value = typename Cell::value_type;
+
+    // We use const cell pointer here for both constant and non-constant
+    // wrapper, to avoid adding another template parameter. Const-correctness
+    // is guaranteed by that the const iterator always returns a constant
+    // cell wrapper.
+    const Cell * cell;
+    Key key;
+
+    const Key & getFirst() const { return key; }
+    const Value & getValue() const { return key; }
+};
 
 /** Used as a lookup table for small keys such as UInt8, UInt16. It's different
   *  than a HashTable in that keys are not stored in the Cell buf, but inferred
@@ -81,8 +96,9 @@ protected:
     {
         if (!std::is_trivially_destructible_v<Cell>)
             for (iterator it = begin(), it_end = end(); it != it_end; ++it)
-                it.ptr->~Cell();
+                it.getPtr()->~Cell();
     }
+
 
 
     template <typename Derived, bool is_const>
@@ -92,50 +108,57 @@ protected:
         using cell_type = std::conditional_t<is_const, const Cell, Cell>;
 
         Container * container;
-        cell_type * ptr;
-
-        friend class FixedHashTable;
+        IteratorCellWrapper<Cell> cell_wrapper;
 
     public:
         iterator_base() {}
-        iterator_base(Container * container_, cell_type * ptr_) : container(container_), ptr(ptr_)
+        iterator_base(Container * container_, cell_type * cell) :
+            container(container_),
+            cell_wrapper{cell, static_cast<Key>(cell - container->buf)}
         {
-            cell.update(ptr - container->buf, ptr);
         }
 
-        bool operator==(const iterator_base & rhs) const { return ptr == rhs.ptr; }
-        bool operator!=(const iterator_base & rhs) const { return ptr != rhs.ptr; }
+        bool operator==(const iterator_base & rhs) const
+        {
+            return cell_wrapper.cell == rhs.cell_wrapper.cell;
+        }
+
+        bool operator!=(const iterator_base & rhs) const { return !(*this == rhs); }
 
         Derived & operator++()
         {
-            ++ptr;
+            ++cell_wrapper.cell;
 
             /// Skip empty cells in the main buffer.
             auto buf_end = container->buf + container->BUFFER_SIZE;
-            while (ptr < buf_end && ptr->isZero(*container))
-                ++ptr;
+            while (cell_wrapper.cell < buf_end
+                   && cell_wrapper.cell->isZero(*container))
+            {
+                ++cell_wrapper.cell;
+            }
+
+            // Have to cast explicitly here, because the key type is more narrow
+            // than pointer type, e.g., UInt8.
+            cell_wrapper.key = static_cast<Key>(cell_wrapper.cell - container->buf);
 
             return static_cast<Derived &>(*this);
         }
 
         auto & operator*()
         {
-            if (cell.key != ptr - container->buf)
-                cell.update(ptr - container->buf, ptr);
-            return cell;
-        }
-        auto * operator-> ()
-        {
-            if (cell.key != ptr - container->buf)
-                cell.update(ptr - container->buf, ptr);
-            return &cell;
+            return cell_wrapper;
         }
 
-        auto getPtr() const { return ptr; }
-        Key getKey() const { return ptr - container->buf; }
-        size_t getHash() const { return ptr - container->buf; }
+        auto * operator-> ()
+        {
+            return &cell_wrapper;
+        }
+
+        const cell_type * getPtr() const { return cell_wrapper.cell; }
+
+        Key getKey() const { return cell_wrapper.key; }
+        size_t getHash() const { return cell_wrapper.key; }
         size_t getCollisionChainLength() const { return 0; }
-        typename cell_type::CellExt cell;
     };
 
 
