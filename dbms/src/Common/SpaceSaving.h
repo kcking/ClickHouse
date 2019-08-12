@@ -190,7 +190,7 @@ public:
         destroyLastElement();
 
         push(new Counter(arena.emplace(key), alpha + increment, alpha + error, hash));
-    }
+   }
 
     /*
      * Parallel Space Saving reduction and combine step from:
@@ -366,7 +366,7 @@ private:
     Counter * findCounter(const TKey & key, size_t hash)
     {
         auto it = counter_map.find(key, hash);
-        if (it == counter_map.end())
+        if (!it)
             return nullptr;
 
         return it->getSecond();

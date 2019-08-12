@@ -83,6 +83,9 @@ protected:
 public:
     using key_type = typename Impl::key_type;
     using value_type = typename Impl::value_type;
+    using ValueRef = typename Impl::ValueRef;
+    using ValuePtr = typename Impl::ValuePtr;
+    using ConstValuePtr = typename Impl::ConstValuePtr;
 
     Impl impls[NUM_BUCKETS];
 
@@ -264,30 +267,22 @@ public:
         emplacePtr(NoopKeyPtr(key), it, inserted, hash_value);
     }
 
-    iterator ALWAYS_INLINE find(Key x, size_t hash_value)
+    ValuePtr ALWAYS_INLINE find(Key x, size_t hash_value)
     {
         size_t buck = getBucketFromHash(hash_value);
 
-        typename Impl::iterator found = impls[buck].find(x, hash_value);
-        return found != impls[buck].end()
-            ? iterator(this, buck, found)
-            : end();
+        return impls[buck].find(x, hash_value);
     }
 
-
-    const_iterator ALWAYS_INLINE find(Key x, size_t hash_value) const
+    /// FIXME
+    /// ALWAYS_INLINE fails with 'function not considered for inlining' -- why?
+    ConstValuePtr find(Key x, size_t hash_value) const
     {
-        size_t buck = getBucketFromHash(hash_value);
-
-        typename Impl::const_iterator found = impls[buck].find(x, hash_value);
-        return found != impls[buck].end()
-            ? const_iterator(this, buck, found)
-            : end();
+        return const_cast<std::decay_t<decltype(this)>>(this)->find(x);
     }
 
-
-    iterator ALWAYS_INLINE find(Key x) { return find(x, hash(x)); }
-    const_iterator ALWAYS_INLINE find(Key x) const { return find(x, hash(x)); }
+    ValuePtr ALWAYS_INLINE find(Key x) { return find(x, hash(x)); }
+    ConstValuePtr ALWAYS_INLINE find(Key x) const { return find(x, hash(x)); }
 
 
     void write(DB::WriteBuffer & wb) const

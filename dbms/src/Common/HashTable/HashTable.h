@@ -96,11 +96,11 @@ struct HashTableCell
     /// Create a cell with the given key / key and value.
     HashTableCell(const Key & key_, const State &) : key(key_) {}
 
-    /// Get what the value_type of the container will be.
-    const value_type & getValue() const { return key; }
+    /// ValueRef interface
+    Key getFirst() { return key; }
+    const value_type getValue() const { return key; }
 
-    /// Get the key.
-    Key & getKey() { return key; }
+    /// Other cell functions
     static const Key & getKey(const value_type & value) { return value; }
 
     /// Are the keys at the cells equal?
@@ -514,6 +514,10 @@ protected:
 public:
     using key_type = Key;
     using value_type = typename Cell::value_type;
+    using ValueRef = Cell &;
+    using ValuePtr = Cell *;
+    using ConstValuePtr = Cell const *;
+
 
     size_t hash(const Key & x) const { return Hash::operator()(x); }
 
@@ -735,7 +739,10 @@ protected:
                 throw;
             }
 
-            it = find(key, hash_value);
+            // The hash table was rehashed, so we have to re-find the key.
+            size_t new_place = findCell(key, hash_value, grower.place(hash_value));
+            assert(!buf[new_place].isZero(*this));
+            it = iterator(this, &buf[new_place]);
         }
     }
 
@@ -780,9 +787,9 @@ public:
 
 
     /// Reinsert node pointed to by iterator
-    void ALWAYS_INLINE reinsert(iterator & it, size_t hash_value)
+    void ALWAYS_INLINE reinsert(ValuePtr & it, size_t hash_value)
     {
-        reinsert(*it.getPtr(), hash_value);
+        reinsert(*it, hash_value);
     }
 
 
@@ -851,50 +858,41 @@ public:
 
 
     template <typename ObjectToCompareWith>
-    iterator ALWAYS_INLINE find(ObjectToCompareWith x)
+    ValuePtr ALWAYS_INLINE find(ObjectToCompareWith x)
     {
         if (Cell::isZero(x, *this))
-            return this->hasZero() ? iteratorToZero() : end();
+            return this->hasZero() ? this->zeroValue() : nullptr;
 
         size_t hash_value = hash(x);
         size_t place_value = findCell(x, hash_value, grower.place(hash_value));
-        return !buf[place_value].isZero(*this) ? iterator(this, &buf[place_value]) : end();
+        return !buf[place_value].isZero(*this) ? &buf[place_value] : nullptr;
     }
 
+    /// FIXME
+    /// ALWAYS_INLINE fails with 'function not considered for inlining' -- why?
+    template <typename ObjectToCompareWith>
+    ConstValuePtr find(ObjectToCompareWith x) const
+    {
+        return const_cast<std::decay_t<decltype(this)>>(this)->find(x);
+    }
 
     template <typename ObjectToCompareWith>
-    const_iterator ALWAYS_INLINE find(ObjectToCompareWith x) const
+    ValuePtr ALWAYS_INLINE find(ObjectToCompareWith x, size_t hash_value)
     {
         if (Cell::isZero(x, *this))
-            return this->hasZero() ? iteratorToZero() : end();
+            return this->hasZero() ? this->zeroValue() : nullptr;
 
-        size_t hash_value = hash(x);
         size_t place_value = findCell(x, hash_value, grower.place(hash_value));
-        return !buf[place_value].isZero(*this) ? const_iterator(this, &buf[place_value]) : end();
+        return !buf[place_value].isZero(*this) ? &buf[place_value] : nullptr;
     }
 
-
+    /// FIXME
+    /// ALWAYS_INLINE fails with 'function not considered for inlining' -- why?
     template <typename ObjectToCompareWith>
-    iterator ALWAYS_INLINE find(ObjectToCompareWith x, size_t hash_value)
+    ConstValuePtr find(ObjectToCompareWith x, size_t hash_value) const
     {
-        if (Cell::isZero(x, *this))
-            return this->hasZero() ? iteratorToZero() : end();
-
-        size_t place_value = findCell(x, hash_value, grower.place(hash_value));
-        return !buf[place_value].isZero(*this) ? iterator(this, &buf[place_value]) : end();
+        return const_cast<std::decay_t<decltype(this)>>(this)->find(x, hash_value);
     }
-
-
-    template <typename ObjectToCompareWith>
-    const_iterator ALWAYS_INLINE find(ObjectToCompareWith x, size_t hash_value) const
-    {
-        if (Cell::isZero(x, *this))
-            return this->hasZero() ? iteratorToZero() : end();
-
-        size_t place_value = findCell(x, hash_value, grower.place(hash_value));
-        return !buf[place_value].isZero(*this) ? const_iterator(this, &buf[place_value]) : end();
-    }
-
 
     bool ALWAYS_INLINE has(Key x) const
     {

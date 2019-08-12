@@ -668,13 +668,13 @@ public:
 
         while (pos < end)
         {
-            Table::iterator it = table.end();
+            Table::ValuePtr it;
 
             size_t context_size = params.order;
             while (true)
             {
                 it = table.find(hashContext(code_points.data() + code_points.size() - context_size, code_points.data() + code_points.size()));
-                if (table.end() != it && it->getSecond().total + it->getSecond().count_end != 0)
+                if (it && it->getSecond().total + it->getSecond().count_end != 0)
                     break;
 
                 if (context_size == 0)
@@ -682,7 +682,7 @@ public:
                 --context_size;
             }
 
-            if (table.end() == it)
+            if (!it)
                 throw Exception("Logical error in markov model", ErrorCodes::LOGICAL_ERROR);
 
             size_t offset_from_begin_of_string = pos - data;

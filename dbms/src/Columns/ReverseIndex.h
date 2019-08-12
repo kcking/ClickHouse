@@ -423,13 +423,10 @@ UInt64 ReverseIndex<IndexType, ColumnType>::getInsertionPoint(const StringRef & 
     if (!index)
         buildIndex();
 
-    using IteratorType = typename IndexMapType::iterator;
-    IteratorType iterator;
-
     auto hash = getHash(data);
-    iterator = index->find(data, hash);
+    auto it = index->find(data, hash);
 
-    return iterator == index->end() ? size() + base_index : iterator->getValue();
+    return it ? it->getValue() : size() + base_index;
 }
 
 }

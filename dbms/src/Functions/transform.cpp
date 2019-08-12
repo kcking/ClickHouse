@@ -507,7 +507,7 @@ private:
         for (size_t i = 0; i < size; ++i)
         {
             auto it = table.find(src[i]);
-            if (it != table.end())
+            if (it)
                 memcpy(&dst[i], &it->getSecond(), sizeof(dst[i]));    /// little endian.
             else
                 dst[i] = dst_default;
@@ -523,7 +523,7 @@ private:
         for (size_t i = 0; i < size; ++i)
         {
             auto it = table.find(src[i]);
-            if (it != table.end())
+            if (it)
                 memcpy(&dst[i], &it->getSecond(), sizeof(dst[i]));    /// little endian.
             else
                 dst[i] = dst_default[i];
@@ -539,7 +539,7 @@ private:
         for (size_t i = 0; i < size; ++i)
         {
             auto it = table.find(src[i]);
-            if (it != table.end())
+            if (it)
                 memcpy(&dst[i], &it->getSecond(), sizeof(dst[i]));
             else
                 dst[i] = src[i];
@@ -557,7 +557,7 @@ private:
         for (size_t i = 0; i < size; ++i)
         {
             auto it = table.find(src[i]);
-            StringRef ref = it != table.end() ? it->getSecond() : dst_default;
+            StringRef ref = it ? it->getSecond() : dst_default;
             dst_data.resize(current_dst_offset + ref.size);
             memcpy(&dst_data[current_dst_offset], ref.data, ref.size);
             current_dst_offset += ref.size;
@@ -580,7 +580,7 @@ private:
             auto it = table.find(src[i]);
             StringRef ref;
 
-            if (it != table.end())
+            if (it)
                 ref = it->getSecond();
             else
             {
@@ -610,7 +610,7 @@ private:
             StringRef ref{&src_data[current_src_offset], src_offsets[i] - current_src_offset};
             current_src_offset = src_offsets[i];
             auto it = table.find(ref);
-            if (it != table.end())
+            if (it)
                 memcpy(&dst[i], &it->getSecond(), sizeof(dst[i]));
             else
                 dst[i] = dst_default;
@@ -631,7 +631,7 @@ private:
             StringRef ref{&src_data[current_src_offset], src_offsets[i] - current_src_offset};
             current_src_offset = src_offsets[i];
             auto it = table.find(ref);
-            if (it != table.end())
+            if (it)
                 memcpy(&dst[i], &it->getSecond(), sizeof(dst[i]));
             else
                 dst[i] = dst_default[i];
@@ -655,7 +655,7 @@ private:
 
             auto it = table.find(src_ref);
 
-            StringRef dst_ref = it != table.end() ? it->getSecond() : (with_default ? dst_default : src_ref);
+            StringRef dst_ref = it ? it->getSecond() : (with_default ? dst_default : src_ref);
             dst_data.resize(current_dst_offset + dst_ref.size);
             memcpy(&dst_data[current_dst_offset], dst_ref.data, dst_ref.size);
             current_dst_offset += dst_ref.size;
@@ -696,7 +696,7 @@ private:
             auto it = table.find(src_ref);
             StringRef dst_ref;
 
-            if (it != table.end())
+            if (it)
                 dst_ref = it->getSecond();
             else
             {

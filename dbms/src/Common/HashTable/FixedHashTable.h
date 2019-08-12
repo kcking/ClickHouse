@@ -45,8 +45,8 @@ struct IteratorCellWrapper
     const Cell * cell;
     Key key;
 
-    const Key & getFirst() const { return key; }
-    const Value & getValue() const { return key; }
+    const Key getFirst() const { return key; }
+    const Value getValue() const { return key; }
 };
 
 /** Used as a lookup table for small keys such as UInt8, UInt16. It's different
@@ -77,6 +77,10 @@ protected:
 
     using Self = FixedHashTable;
     using cell_type = Cell;
+
+    using ValueRef = IteratorCellWrapper<Cell>;
+    using ValuePtr = std::optional<ValueRef>;
+    using ConstValuePtr = std::optional<const ValueRef>;
 
     size_t m_size = 0; /// Amount of elements
     Cell * buf; /// A piece of memory for all elements except the element with zero key.
@@ -333,27 +337,36 @@ public:
 
 
     template <typename ObjectToCompareWith>
-    iterator ALWAYS_INLINE find(ObjectToCompareWith x)
+    ValuePtr ALWAYS_INLINE find(ObjectToCompareWith x)
     {
-        return !buf[x].isZero(*this) ? iterator(this, &buf[x]) : end();
+        return !buf[x].isZero(*this)
+                ? ValuePtr({&buf[x], static_cast<Key>(x)})
+                : ValuePtr();
     }
 
     template <typename ObjectToCompareWith>
-    const_iterator ALWAYS_INLINE find(ObjectToCompareWith x) const
+    ValuePtr ALWAYS_INLINE find(ObjectToCompareWith, size_t hash_value)
     {
-        return !buf[x].isZero(*this) ? const_iterator(this, &buf[x]) : end();
+        return !buf[hash_value].isZero(*this)
+                ? ValuePtr({&buf[hash_value],
+                            static_cast<Key>(hash_value)})
+                : ValuePtr();
     }
 
+    /// FIXME
+    /// ALWAYS_INLINE fails with 'function not considered for inlining' -- why?
     template <typename ObjectToCompareWith>
-    iterator ALWAYS_INLINE find(ObjectToCompareWith, size_t hash_value)
+    ConstValuePtr find(ObjectToCompareWith x) const
     {
-        return !buf[hash_value].isZero(*this) ? iterator(this, &buf[hash_value]) : end();
+        return const_cast<std::decay_t<decltype(this)>>(this)->find(x);
     }
 
+    /// FIXME
+    /// ALWAYS_INLINE fails with 'function not considered for inlining' -- why?
     template <typename ObjectToCompareWith>
-    const_iterator ALWAYS_INLINE find(ObjectToCompareWith, size_t hash_value) const
+    ConstValuePtr find(ObjectToCompareWith x, size_t hash_value) const
     {
-        return !buf[hash_value].isZero(*this) ? const_iterator(this, &buf[hash_value]) : end();
+        return const_cast<std::decay_t<decltype(this)>>(this)->find(x);
     }
 
     bool ALWAYS_INLINE has(Key x) const { return !buf[x].isZero(*this); }

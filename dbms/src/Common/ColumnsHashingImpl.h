@@ -212,17 +212,19 @@ protected:
         }
 
         auto it = data.find(key);
-        bool found = it != data.end();
 
         if constexpr (consecutive_keys_optimization)
         {
-            cache.found = found;
             cache.empty = false;
 
-            if (found)
+            if (it)
+            {
+                cache.found = true;
                 cache.value = it->getValue();
+            }
             else
             {
+                cache.found = false;
                 if constexpr (has_mapped)
                     cache.value.first = key;
                 else
@@ -231,9 +233,10 @@ protected:
         }
 
         if constexpr (has_mapped)
-            return FindResult(found ? &it->getSecond() : nullptr, found);
+            return FindResult(it ? &it->getSecond() : nullptr,
+                              static_cast<bool>(it));
         else
-            return FindResult(found);
+            return FindResult(static_cast<bool>(it));
     }
 };
 

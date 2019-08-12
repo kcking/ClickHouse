@@ -124,7 +124,7 @@ void RangeHashedDictionary::getString(
     for (const auto i : ext::range(0, ids.size()))
     {
         const auto it = attr.find(ids[i]);
-        if (it != std::end(attr))
+        if (it)
         {
             const auto date = dates[i];
             const auto & ranges_and_values = it->getSecond();
@@ -395,7 +395,7 @@ void RangeHashedDictionary::getItemsImpl(
     for (const auto i : ext::range(0, ids.size()))
     {
         const auto it = attr.find(ids[i]);
-        if (it != std::end(attr))
+        if (it)
         {
             const auto date = dates[i];
             const auto & ranges_and_values = it->getSecond();
@@ -423,7 +423,7 @@ void RangeHashedDictionary::setAttributeValueImpl(Attribute & attribute, const K
     auto & map = *std::get<Ptr<T>>(attribute.maps);
     const auto it = map.find(id);
 
-    if (it != map.end())
+    if (it)
     {
         auto & values = it->getSecond();
 
@@ -496,7 +496,7 @@ void RangeHashedDictionary::setAttributeValue(Attribute & attribute, const Key i
 
             const auto it = map.find(id);
 
-            if (it != map.end())
+            if (it)
             {
                 auto & values = it->getSecond();
 
