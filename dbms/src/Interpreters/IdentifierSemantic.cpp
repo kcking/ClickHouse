@@ -115,6 +115,9 @@ void IdentifierSemantic::setColumnShortName(ASTIdentifier & identifier, size_t t
         new_name += part;
     }
     identifier.name.swap(new_name);
+    
+    if (identifier.alias.empty())
+        identifier.alias.swap(new_name);
 }
 
 void IdentifierSemantic::setColumnNormalName(ASTIdentifier & identifier, const DatabaseAndTableWithAlias & db_and_table)
