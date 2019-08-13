@@ -257,7 +257,7 @@ void ExpressionAction::prepare(Block & sample_block, const Settings & settings)
         {
             //auto join_strictness = join->getStrictness();
 
-            bool is_null_used_as_default = join->isNullUsedAsDefault();
+            bool is_null_used_as_default = settings.join_use_nulls;
 
             if (is_null_used_as_default)
             {
