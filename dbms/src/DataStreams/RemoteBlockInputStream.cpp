@@ -167,14 +167,14 @@ static Block adaptBlockStructure(const Block & block, const Block & header, cons
     {
         ColumnPtr column;
 
-        if (isColumnConst(*elem.column))
+        if (elem.column && isColumnConst(*elem.column))
             /// TODO: check that column from block contains the same value.
             /// TODO: serialize const columns.
             column = elem.column->cloneResized(block.rows());
         else
             column = castColumn(block.getByName(elem.name), elem.type, context);
 
-        res.insert({castColumn(block.getByName(elem.name), elem.type, context), elem.type, elem.name});
+        res.insert({column, elem.type, elem.name});
     }
     return res;
 }
