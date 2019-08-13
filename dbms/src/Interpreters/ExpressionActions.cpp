@@ -12,6 +12,7 @@
 #include <Functions/IFunction.h>
 #include <set>
 #include <optional>
+#include <DataTypes/DataTypeNullable.h>
 
 
 namespace ProfileEvents
@@ -256,6 +257,19 @@ void ExpressionAction::prepare(Block & sample_block, const Settings & settings)
 
             for (const auto & col : columns_added_by_join)
                 sample_block.insert(ColumnWithTypeAndName(nullptr, col.type, col.name));
+
+            for (auto & left_key : join_key_names_left)
+            {
+                auto & col = sample_block.getByName(left_key);
+
+                /// Keys are materialized in JOIN.
+                if (col.column)
+                    col.column = nullptr;
+
+                /// Key columns are converted to nullable in JOIN if `join_use_nulls` setting is enabled.
+                if (join->isNullUsedAsDefault() && !col.type->isNullable())
+                    col.type = std::make_shared<DataTypeNullable>(col.type);
+            }
 
             break;
         }

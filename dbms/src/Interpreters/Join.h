@@ -126,6 +126,8 @@ public:
 
     bool empty() { return type == Type::EMPTY; }
 
+    bool isNullUsedAsDefault() const { return use_nulls; }
+
     /** Set information about structure of right hand of JOIN (joined data).
       * You must call this method before subsequent calls to insertFromBlock.
       */
