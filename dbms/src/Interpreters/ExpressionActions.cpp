@@ -160,6 +160,7 @@ ExpressionAction ExpressionAction::arrayJoin(const NameSet & array_joined_column
 }
 
 ExpressionAction ExpressionAction::ordinaryJoin(
+    const ASTTableJoin & join_params,
     std::shared_ptr<const Join> join_,
     const Names & join_key_names_left,
     const NamesAndTypesList & columns_added_by_join_)
@@ -167,6 +168,7 @@ ExpressionAction ExpressionAction::ordinaryJoin(
     ExpressionAction a;
     a.type = JOIN;
     a.join = std::move(join_);
+    a.join_kind = join_params.kind;
     a.join_key_names_left = join_key_names_left;
     a.columns_added_by_join = columns_added_by_join_;
     return a;
@@ -253,7 +255,6 @@ void ExpressionAction::prepare(Block & sample_block, const Settings & settings)
 
         case JOIN:
         {
-            auto join_kind = join->getKind();
             //auto join_strictness = join->getStrictness();
 
             bool is_null_used_as_default = join->isNullUsedAsDefault();
