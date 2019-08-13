@@ -170,6 +170,7 @@ public:
     size_t getTotalByteCount() const;
 
     ASTTableJoin::Kind getKind() const { return kind; }
+    ASTTableJoin::Strictness getStrictness() const { return strictness; }
     AsofRowRefs::Type getAsofType() const { return *asof_type; }
     bool anyTakeLastRow() const { return any_take_last_row; }
 

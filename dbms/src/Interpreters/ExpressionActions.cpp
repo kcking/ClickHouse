@@ -253,22 +253,39 @@ void ExpressionAction::prepare(Block & sample_block, const Settings & settings)
 
         case JOIN:
         {
-            /// TODO join_use_nulls setting
+            auto join_kind = join->getKind();
+            //auto join_strictness = join->getStrictness();
+
+            bool is_null_used_as_default = join->isNullUsedAsDefault();
+
+            if (is_null_used_as_default)
+            {
+                if (join_kind == ASTTableJoin::Kind::Right || join_kind == ASTTableJoin::Kind::Full)
+                {
+                    for (auto & col : sample_block)
+                    {
+                        /// Materialize column.
+                        if (col.column)
+                            col.column = nullptr;
+
+                        if (!col.type->isNullable())
+                            col.type = std::make_shared<DataTypeNullable>(col.type);
+                    }
+                }
+            }
 
             for (const auto & col : columns_added_by_join)
-                sample_block.insert(ColumnWithTypeAndName(nullptr, col.type, col.name));
-
-            for (auto & left_key : join_key_names_left)
             {
-                auto & col = sample_block.getByName(left_key);
+                auto res_type = col.type;
 
-                /// Keys are materialized in JOIN.
-                if (col.column)
-                    col.column = nullptr;
+                if (is_null_used_as_default)
+                {
+                    if (join_kind == ASTTableJoin::Kind::Left || join_kind == ASTTableJoin::Kind::Full)
+                        if (!res_type->isNullable())
+                            res_type = std::make_shared<DataTypeNullable>(type);
+                }
 
-                /// Key columns are converted to nullable in JOIN if `join_use_nulls` setting is enabled.
-                if (join->isNullUsedAsDefault() && !col.type->isNullable())
-                    col.type = std::make_shared<DataTypeNullable>(col.type);
+                sample_block.insert(ColumnWithTypeAndName(nullptr, res_type, col.name));
             }
 
             break;
