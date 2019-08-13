@@ -282,7 +282,7 @@ void ExpressionAction::prepare(Block & sample_block, const Settings & settings)
                 {
                     if (join_kind == ASTTableJoin::Kind::Left || join_kind == ASTTableJoin::Kind::Full)
                         if (!res_type->isNullable())
-                            res_type = std::make_shared<DataTypeNullable>(type);
+                            res_type = std::make_shared<DataTypeNullable>(res_type);
                 }
 
                 sample_block.insert(ColumnWithTypeAndName(nullptr, res_type, col.name));
